@@ -52,6 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       build: ${{ steps.check.outputs.build }}
+      version_suffix: ${{ steps.check.outputs.version_suffix }}
     steps:
       - name: Decide whether to build
         id: check
@@ -70,12 +71,16 @@ jobs:
           fi
 
           echo "build=${build}" >> "${GITHUB_OUTPUT}"
+          # 版本号后缀带构建当天的日期（UTC），如 0.1.0-nightly.20261011
+          echo "version_suffix=nightly.$(date -u +%Y%m%d)" >> "${GITHUB_OUTPUT}"
 
   build:
     name: Build
     needs: check
     if: needs.check.outputs.build == 'true'
     uses: ./.github/workflows/build.yml
+    with:
+      version_suffix: ${{ needs.check.outputs.version_suffix }}
 
   publish-release:
     name: Publish nightly Release

@@ -22,6 +22,8 @@ import {
 import { Button } from "@/components/ui/button";
 import SidebarItem, { type SidebarRoute } from "./SidebarItem.vue";
 import { useExtensions } from "@/composables/useExtensions";
+import { useI18n } from "vue-i18n";
+import { formatVersionLabel, getVersionChannel } from "@/utils/appVersion";
 
 const props = defineProps<{
   collapsed: boolean;
@@ -35,6 +37,28 @@ const emit = defineEmits<{
 
 const router = useRouter();
 const route = useRoute();
+const { t } = useI18n();
+
+// 侧边栏底部的版本信息：一行简短文字，完整信息放在鼠标悬停的提示里
+const versionLabel = formatVersionLabel(__APP_VERSION__, __APP_COMMIT__);
+const versionTitle = computed(() => {
+  const channel = {
+    stable: t("common.channelStable"),
+    prerelease: t("common.channelPrerelease"),
+    nightly: t("common.channelNightly"),
+  }[getVersionChannel(__APP_VERSION__)];
+  const lines = [
+    `${t("common.version")}: ${__APP_VERSION__}`,
+    `${t("common.channel")}: ${channel}`,
+  ];
+  if (__APP_COMMIT__) {
+    lines.push(`${t("common.commit")}: ${__APP_COMMIT__}`);
+  }
+  lines.push(
+    `${t("common.buildTime")}: ${new Date(__APP_BUILD_TIME__).toLocaleString()}`,
+  );
+  return lines.join("\n");
+});
 
 watch(
   () => route.path,
@@ -374,5 +398,13 @@ const groupedRoutes = computed<[string, SidebarRoute[]][]>(() => {
         </div>
       </div>
     </nav>
+
+    <div
+      class="shrink-0 truncate border-t px-3 py-2 text-xs text-muted-foreground select-text"
+      :class="props.collapsed ? 'md:hidden' : ''"
+      :title="versionTitle"
+    >
+      {{ versionLabel }}
+    </div>
   </aside>
 </template>

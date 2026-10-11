@@ -3,9 +3,17 @@ name: build
 # 可复用的构建流程：构建面板并打包成 nodeget-board.zip / nodeget-board.tar.gz，上传为 artifact。
 # 由 ci.yml（拉取请求）、release.yml（正式版和预发布）、nightly.yml 调用。
 # 本流程只构建，不发布任何东西。
+# version_suffix 只有 nightly 会传：构建时给 package.json 的版本号追加后缀（如 0.1.0-nightly.20261011），
+# 面板界面上显示的版本号就是它。正式版、预发布和拉取请求不传，版本号保持 package.json 中的原样。
 
 on:
   workflow_call:
+    inputs:
+      version_suffix:
+        description: "追加到 package.json 版本号后的后缀，留空则不追加"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -33,6 +41,20 @@ jobs:
         run: pnpm install --frozen-lockfile
         env:
           HUSKY: 0
+
+      # 只改本次检出里的 package.json，不会提交回仓库
+      - name: Append version suffix
+        if: inputs.version_suffix != ''
+        env:
+          SUFFIX: ${{ inputs.version_suffix }}
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = pkg.version + '-' + process.env.SUFFIX;
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+            console.log('version set to: ' + pkg.version);
+          "
 
       - name: Build
         run: pnpm build
